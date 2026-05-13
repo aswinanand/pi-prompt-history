@@ -1,0 +1,83 @@
+{
+  "name": "@furbyhaxx/pi-prompt-history",
+  "version": "0.1.0",
+  "description": "Slim Pi extension that keeps session-scoped prompt history and loads prior prompts into pi's native editor.",
+  "main": "extensions/prompt-history/index.ts",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "npm run typecheck && npm run test:unit",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "tsx extensions/prompt-history/config.test.ts && tsx extensions/prompt-history/history.test.ts && tsx extensions/prompt-history/index.test.ts",
+    "build": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/furbyhaxx/pi-prompt-history.git"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-coding-agent",
+    "prompt-history"
+  ],
+  "author": "furbyhaxx",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/furbyhaxx/pi-prompt-history/issues"
+  },
+  "homepage": "https://github.com/furbyhaxx/pi-prompt-history#readme",
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-agent-core": "^0.74.0",
+    "@earendil-works/pi-ai": "^0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@earendil-works/pi-tui": "^0.74.0",
+    "@types/node": "^25.7.0",
+    "tsx": "^4.21.0",
+    "typebox": "^1.1.38",
+    "typescript": "^6.0.3"
+  },
+  "pi": {
+    "extensions": [
+      "extensions/prompt-history/index.ts"
+    ]
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-agent-core": {
+      "optional": true
+    },
+    "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "@earendil-works/pi-tui": {
+      "optional": true
+    },
+    "typebox": {
+      "optional": true
+    }
+  },
+  "files": [
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "package.json",
+    "extensions/prompt-history/index.ts",
+    "extensions/prompt-history/config.ts",
+    "extensions/prompt-history/history.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

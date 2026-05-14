@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import promptHistoryExtension from "./index.js";
 import { resolvePromptHistoryPath } from "./history.js";
 
 type InputHandler = (event: { text: string; source: "interactive" | "rpc" | "extension" }, ctx: MockCtx) => Promise<unknown> | unknown;
+type SessionStartHandler = (event: { reason: string }, ctx: MockCtx) => Promise<unknown> | unknown;
 type CommandHandler = (args: string, ctx: MockCtx) => Promise<void> | void;
 
 interface MockCtx {
@@ -96,10 +97,10 @@ async function withTempRuntime(fn: (paths: { cwd: string; sessionDir: string; ag
 }
 
 await withTempRuntime(async ({ cwd, sessionDir }) => {
-	const handlers = new Map<string, InputHandler>();
+	const handlers = new Map<string, InputHandler | SessionStartHandler>();
 	const commands = new Map<string, { description: string; handler: CommandHandler }>();
 	const pi = {
-		on(name: string, handler: InputHandler) {
+		on(name: string, handler: InputHandler | SessionStartHandler) {
 			handlers.set(name, handler);
 		},
 		registerCommand(name: string, command: { description: string; handler: CommandHandler }) {
@@ -107,13 +108,14 @@ await withTempRuntime(async ({ cwd, sessionDir }) => {
 		},
 	};
 
-	promptHistoryExtension(pi as never);
+	await promptHistoryExtension(pi as never);
 
 	assert.ok(handlers.has("input"));
-	assert.ok(commands.has("history"));
 
 	const ctx = createMockCtx(cwd, sessionDir);
-	const input = handlers.get("input")!;
+	await (handlers.get("session_start") as SessionStartHandler | undefined)?.({ reason: "startup" }, ctx);
+	assert.ok(commands.has("history"));
+	const input = handlers.get("input") as InputHandler;
 	assert.deepEqual(await input({ text: " first prompt ", source: "interactive" }, ctx), { action: "continue" });
 	assert.deepEqual(await input({ text: "ignored extension prompt", source: "extension" }, ctx), { action: "continue" });
 
@@ -143,13 +145,50 @@ await withTempRuntime(async ({ cwd }) => {
 		},
 		registerCommand() {},
 	};
-	promptHistoryExtension(pi as never);
+	await promptHistoryExtension(pi as never);
 
 	const oldCwd = process.cwd();
 	process.chdir(cwd);
 	try {
 		await handlers.get("input")!({ text: "ephemeral", source: "interactive" }, createMockCtx(cwd, ""));
 		assert.equal(await fileExists(join(cwd, "prompt.history.jsonl")), false);
+	} finally {
+		process.chdir(oldCwd);
+	}
+});
+
+await withTempRuntime(async ({ cwd, sessionDir }) => {
+	await mkdir(join(cwd, ".pi"), { recursive: true });
+	await writeFile(
+		join(cwd, ".pi", "settings.json"),
+		JSON.stringify({ promptHistory: { enabled: false } }),
+		"utf8",
+	);
+
+	const handlers = new Map<string, InputHandler | SessionStartHandler>();
+	const commands = new Map<string, { description: string; handler: CommandHandler }>();
+	const pi = {
+		on(name: string, handler: InputHandler | SessionStartHandler) {
+			handlers.set(name, handler);
+		},
+		registerCommand(name: string, command: { description: string; handler: CommandHandler }) {
+			commands.set(name, command);
+		},
+	};
+
+	await promptHistoryExtension(pi as never);
+
+	const oldCwd = process.cwd();
+	process.chdir(cwd);
+	try {
+		const ctx = createMockCtx(cwd, sessionDir);
+		await (handlers.get("session_start") as SessionStartHandler | undefined)?.({ reason: "startup" }, ctx);
+		assert.equal(commands.has("history"), false, "disabled prompt history must not register /history");
+		assert.deepEqual(
+			await (handlers.get("input") as InputHandler | undefined)?.({ text: "ignored", source: "interactive" }, ctx),
+			{ action: "continue" },
+		);
+		assert.equal(await fileExists(resolvePromptHistoryPath(sessionDir)), false);
 	} finally {
 		process.chdir(oldCwd);
 	}

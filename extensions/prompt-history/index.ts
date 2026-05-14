@@ -8,7 +8,7 @@ import {
 
 const DEFAULT_COMMAND_NAME = "history";
 
-export default function promptHistoryExtension(pi: ExtensionAPI): void {
+export default async function promptHistoryExtension(pi: ExtensionAPI): Promise<void> {
 	const registeredCommands = new Set<string>();
 	const registerHistoryCommand = (name: string) => {
 		if (registeredCommands.has(name)) return;
@@ -20,15 +20,18 @@ export default function promptHistoryExtension(pi: ExtensionAPI): void {
 			},
 		});
 	};
-
-	registerHistoryCommand(DEFAULT_COMMAND_NAME);
+	const registerConfiguredCommands = async (cwd: string) => {
+		const { config } = await loadPromptHistoryConfig(cwd);
+		if (!config.enabled) return;
+		registerHistoryCommand(DEFAULT_COMMAND_NAME);
+		registerHistoryCommand(config.command);
+	};
 
 	pi.on("session_start", async (_event, ctx) => {
 		try {
-			const { config } = await loadPromptHistoryConfig(ctx.cwd);
-			registerHistoryCommand(config.command);
+			await registerConfiguredCommands(ctx.cwd);
 		} catch {
-			// The default /history command remains available; command alias loading is best-effort.
+			// Command alias loading is best-effort; the input path reports no errors.
 		}
 	});
 

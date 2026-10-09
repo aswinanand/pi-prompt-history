@@ -26,6 +26,7 @@ const baseConfig: PromptHistoryConfig = {
 	trim: true,
 	ignoreInvalidLines: false,
 	command: "history",
+	searchShortcut: "ctrl+r",
 };
 
 await withSessionDir(async (sessionDir) => {

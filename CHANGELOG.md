@@ -4,6 +4,17 @@ All notable changes to this repository are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Fuzzy reverse-search overlay bound to `Ctrl+R` (configurable via
+  `promptHistory.searchShortcut` in `settings.json`), inspired by
+  [`pi-input-history`](https://github.com/ouzhenkun/pi-input-history). Cycling
+  with `Ctrl+R`/`↑` and `Ctrl+S`/`↓`, preview scrolling with `Ctrl+K`/`Ctrl+J`,
+  accept with `Enter`, cancel with `Esc`/`Ctrl+G`.
+- Unit tests for the fuzzy matcher, match highlighting, and shortcut
+  registration.
+
 ## [0.1.1] - 2026-05-14
 
 ### Changed

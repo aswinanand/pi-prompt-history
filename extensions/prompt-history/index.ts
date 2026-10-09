@@ -1,15 +1,19 @@
-import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { KeyId, TUI } from "@earendil-works/pi-tui";
 import { loadPromptHistoryConfig, type PromptHistoryConfig } from "./config.js";
 import {
 	appendPromptHistory,
+	loadPromptHistory,
 	loadPromptHistoryEntries,
 	type PromptHistoryEntry,
 } from "./history.js";
+import { ReverseSearchComponent } from "./search.js";
 
 const DEFAULT_COMMAND_NAME = "history";
 
 export default async function promptHistoryExtension(pi: ExtensionAPI): Promise<void> {
 	const registeredCommands = new Set<string>();
+	const registeredShortcuts = new Set<string>();
 	const registerHistoryCommand = (name: string) => {
 		if (registeredCommands.has(name)) return;
 		registeredCommands.add(name);
@@ -20,11 +24,22 @@ export default async function promptHistoryExtension(pi: ExtensionAPI): Promise<
 			},
 		});
 	};
+	const registerSearchShortcut = (shortcut: string) => {
+		if (registeredShortcuts.has(shortcut)) return;
+		registeredShortcuts.add(shortcut);
+		pi.registerShortcut(shortcut as KeyId, {
+			description: "Reverse search prompt history",
+			handler: async (ctx) => {
+				await handleSearchShortcut(ctx);
+			},
+		});
+	};
 	const registerConfiguredCommands = async (cwd: string) => {
 		const { config } = await loadPromptHistoryConfig(cwd);
 		if (!config.enabled) return;
 		registerHistoryCommand(DEFAULT_COMMAND_NAME);
 		registerHistoryCommand(config.command);
+		registerSearchShortcut(config.searchShortcut);
 	};
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -105,6 +120,56 @@ async function handleHistoryCommand(ctx: ExtensionCommandContext): Promise<void>
 
 	ctx.ui.setEditorText(entry.text);
 	ctx.ui.notify("Loaded prompt history entry into the editor", "info");
+}
+
+async function handleSearchShortcut(ctx: ExtensionContext): Promise<void> {
+	if (!ctx.hasUI) return;
+
+	let config: PromptHistoryConfig;
+	try {
+		config = (await loadPromptHistoryConfig(ctx.cwd)).config;
+	} catch (error) {
+		ctx.ui.notify(`Failed to load prompt history settings: ${formatError(error)}`, "warning");
+		return;
+	}
+
+	if (!config.enabled) return;
+
+	const sessionDir = ctx.sessionManager.getSessionDir();
+	if (!sessionDir) {
+		ctx.ui.notify("Prompt history is unavailable without a persisted Pi session", "warning");
+		return;
+	}
+
+	let texts: string[];
+	try {
+		texts = await loadPromptHistory(sessionDir, config);
+	} catch (error) {
+		ctx.ui.notify(`Failed to load prompt history: ${formatError(error)}`, "error");
+		return;
+	}
+
+	if (texts.length === 0) {
+		ctx.ui.notify("No prompt history found", "info");
+		return;
+	}
+
+	let overlayTui: TUI | undefined;
+	const selected = await ctx.ui.custom<string | null>((tui, theme, _keybindings, done) => {
+		overlayTui = tui;
+		return new ReverseSearchComponent(tui, theme, texts, done, config.searchShortcut as KeyId);
+	}, {
+		overlay: true,
+		overlayOptions: { anchor: "bottom-center", width: "100%" },
+	});
+
+	if (selected === null) return;
+
+	ctx.ui.setEditorText(selected);
+	ctx.ui.notify("Loaded prompt history entry into the editor", "info");
+	// setEditorText does not repaint, and the render triggered by hiding the overlay
+	// runs before this continuation (nextTick queue drains before promise microtasks).
+	overlayTui?.requestRender();
 }
 
 function formatHistoryPreview(text: string, maxWidth = 72): string {

@@ -8,6 +8,7 @@ import { resolvePromptHistoryPath } from "./history.js";
 type InputHandler = (event: { text: string; source: "interactive" | "rpc" | "extension" }, ctx: MockCtx) => Promise<unknown> | unknown;
 type SessionStartHandler = (event: { reason: string }, ctx: MockCtx) => Promise<unknown> | unknown;
 type CommandHandler = (args: string, ctx: MockCtx) => Promise<void> | void;
+type ShortcutHandler = (ctx: MockCtx) => Promise<void> | void;
 
 interface MockCtx {
 	cwd: string;
@@ -99,12 +100,16 @@ async function withTempRuntime(fn: (paths: { cwd: string; sessionDir: string; ag
 await withTempRuntime(async ({ cwd, sessionDir }) => {
 	const handlers = new Map<string, InputHandler | SessionStartHandler>();
 	const commands = new Map<string, { description: string; handler: CommandHandler }>();
+	const shortcuts = new Map<string, { description: string; handler: ShortcutHandler }>();
 	const pi = {
 		on(name: string, handler: InputHandler | SessionStartHandler) {
 			handlers.set(name, handler);
 		},
 		registerCommand(name: string, command: { description: string; handler: CommandHandler }) {
 			commands.set(name, command);
+		},
+		registerShortcut(name: string, shortcut: { description: string; handler: ShortcutHandler }) {
+			shortcuts.set(name, shortcut);
 		},
 	};
 
@@ -115,6 +120,7 @@ await withTempRuntime(async ({ cwd, sessionDir }) => {
 	const ctx = createMockCtx(cwd, sessionDir);
 	await (handlers.get("session_start") as SessionStartHandler | undefined)?.({ reason: "startup" }, ctx);
 	assert.ok(commands.has("history"));
+	assert.ok(shortcuts.has("ctrl+r"), "default ctrl+r search shortcut must be registered");
 	const input = handlers.get("input") as InputHandler;
 	assert.deepEqual(await input({ text: " first prompt ", source: "interactive" }, ctx), { action: "continue" });
 	assert.deepEqual(await input({ text: "ignored extension prompt", source: "extension" }, ctx), { action: "continue" });
@@ -167,12 +173,16 @@ await withTempRuntime(async ({ cwd, sessionDir }) => {
 
 	const handlers = new Map<string, InputHandler | SessionStartHandler>();
 	const commands = new Map<string, { description: string; handler: CommandHandler }>();
+	const shortcuts = new Map<string, { description: string; handler: ShortcutHandler }>();
 	const pi = {
 		on(name: string, handler: InputHandler | SessionStartHandler) {
 			handlers.set(name, handler);
 		},
 		registerCommand(name: string, command: { description: string; handler: CommandHandler }) {
 			commands.set(name, command);
+		},
+		registerShortcut(name: string, shortcut: { description: string; handler: ShortcutHandler }) {
+			shortcuts.set(name, shortcut);
 		},
 	};
 
@@ -184,6 +194,7 @@ await withTempRuntime(async ({ cwd, sessionDir }) => {
 		const ctx = createMockCtx(cwd, sessionDir);
 		await (handlers.get("session_start") as SessionStartHandler | undefined)?.({ reason: "startup" }, ctx);
 		assert.equal(commands.has("history"), false, "disabled prompt history must not register /history");
+		assert.equal(shortcuts.has("ctrl+r"), false, "disabled prompt history must not register search shortcut");
 		assert.deepEqual(
 			await (handlers.get("input") as InputHandler | undefined)?.({ text: "ignored", source: "interactive" }, ctx),
 			{ action: "continue" },

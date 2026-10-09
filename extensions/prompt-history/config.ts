@@ -11,6 +11,7 @@ export interface PromptHistoryConfig {
 	trim: boolean;
 	ignoreInvalidLines: boolean;
 	command: string;
+	searchShortcut: string;
 }
 
 export interface PromptHistoryConfigError {
@@ -35,6 +36,7 @@ export const DEFAULT_PROMPT_HISTORY_CONFIG: PromptHistoryConfig = {
 	trim: true,
 	ignoreInvalidLines: true,
 	command: "history",
+	searchShortcut: "ctrl+r",
 };
 
 type JsonObject = Record<string, unknown>;
@@ -151,6 +153,10 @@ function sanitizePromptHistoryConfig(
 			typeof value.command === "string" && value.command.trim().length > 0
 				? normalizeCommandName(value.command)
 				: DEFAULT_PROMPT_HISTORY_CONFIG.command,
+		searchShortcut:
+			typeof value.searchShortcut === "string" && value.searchShortcut.trim().length > 0
+				? normalizeShortcut(value.searchShortcut)
+				: DEFAULT_PROMPT_HISTORY_CONFIG.searchShortcut,
 	};
 }
 
@@ -160,6 +166,10 @@ function sanitizeMaxEntries(value: unknown): number {
 	}
 	const integer = Math.floor(value);
 	return integer > 0 ? integer : DEFAULT_PROMPT_HISTORY_CONFIG.maxEntries;
+}
+
+function normalizeShortcut(shortcut: string): string {
+	return shortcut.trim().toLowerCase() || DEFAULT_PROMPT_HISTORY_CONFIG.searchShortcut;
 }
 
 function normalizeCommandName(command: string): string {

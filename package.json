@@ -1,6 +1,6 @@
 {
   "name": "@furbyhaxx/pi-prompt-history",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Slim Pi extension that keeps session-scoped prompt history and loads prior prompts into pi's native editor.",
   "main": "extensions/prompt-history/index.ts",
   "directories": {
@@ -9,7 +9,7 @@
   "scripts": {
     "test": "npm run typecheck && npm run test:unit",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx extensions/prompt-history/config.test.ts && tsx extensions/prompt-history/history.test.ts && tsx extensions/prompt-history/index.test.ts",
+    "test:unit": "tsx extensions/prompt-history/config.test.ts && tsx extensions/prompt-history/history.test.ts && tsx extensions/prompt-history/index.test.ts && tsx extensions/prompt-history/search.test.ts",
     "build": "tsc --noEmit"
   },
   "repository": {
@@ -75,7 +75,8 @@
     "package.json",
     "extensions/prompt-history/index.ts",
     "extensions/prompt-history/config.ts",
-    "extensions/prompt-history/history.ts"
+    "extensions/prompt-history/history.ts",
+    "extensions/prompt-history/search.ts"
   ],
   "publishConfig": {
     "access": "public"

@@ -9,7 +9,7 @@
   "scripts": {
     "test": "npm run typecheck && npm run test:unit",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx extensions/prompt-history/config.test.ts && tsx extensions/prompt-history/history.test.ts && tsx extensions/prompt-history/index.test.ts && tsx extensions/prompt-history/search.test.ts",
+    "test:unit": "tsx extensions/prompt-history/config.test.ts && tsx extensions/prompt-history/history.test.ts && tsx extensions/prompt-history/index.test.ts && tsx extensions/prompt-history/search.test.ts && tsx extensions/prompt-history/backfill.test.ts",
     "build": "tsc --noEmit"
   },
   "repository": {
@@ -76,7 +76,8 @@
     "extensions/prompt-history/index.ts",
     "extensions/prompt-history/config.ts",
     "extensions/prompt-history/history.ts",
-    "extensions/prompt-history/search.ts"
+    "extensions/prompt-history/search.ts",
+    "extensions/prompt-history/backfill.ts"
   ],
   "publishConfig": {
     "access": "public"

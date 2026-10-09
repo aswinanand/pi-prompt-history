@@ -49,7 +49,7 @@ pi -e path/to/cloned/repo/extensions/prompt-history/index.ts
   ```
 
 - Adds `/history` to browse stored prompts and load one back into the native Pi editor.
-- Adds a reverse-search shortcut (default `Ctrl+R`) that opens an overlay to fuzzy-filter stored prompts and load the selected match into the editor.
+- Adds a reverse-search shortcut (default `Ctrl+R`) that opens an overlay to fuzzy-filter stored prompts and load the selected match into the editor. On startup, the search index is backfilled from recent Pi session files for the current working directory (up to `maxEntries` prompts), so historical prompts are searchable without being written to `prompt.history.jsonl`.
 - Skips extension-injected messages so helper extensions do not pollute user prompt history.
 - Supports global and project config through Pi's normal `settings.json` files.
 

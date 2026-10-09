@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { KeyId, TUI } from "@earendil-works/pi-tui";
+import { loadBackfilledPrompts, mergeUnique } from "./backfill.js";
 import { loadPromptHistoryConfig, type PromptHistoryConfig } from "./config.js";
 import {
 	appendPromptHistory,
@@ -14,6 +15,7 @@ const DEFAULT_COMMAND_NAME = "history";
 export default async function promptHistoryExtension(pi: ExtensionAPI): Promise<void> {
 	const registeredCommands = new Set<string>();
 	const registeredShortcuts = new Set<string>();
+	let backfilledTexts: string[] = [];
 	const registerHistoryCommand = (name: string) => {
 		if (registeredCommands.has(name)) return;
 		registeredCommands.add(name);
@@ -24,13 +26,13 @@ export default async function promptHistoryExtension(pi: ExtensionAPI): Promise<
 			},
 		});
 	};
-	const registerSearchShortcut = (shortcut: string) => {
+	const registerSearchShortcut = (shortcut: string, getBackfilledTexts: () => string[]) => {
 		if (registeredShortcuts.has(shortcut)) return;
 		registeredShortcuts.add(shortcut);
 		pi.registerShortcut(shortcut as KeyId, {
 			description: "Reverse search prompt history",
 			handler: async (ctx) => {
-				await handleSearchShortcut(ctx);
+				await handleSearchShortcut(ctx, getBackfilledTexts);
 			},
 		});
 	};
@@ -39,7 +41,16 @@ export default async function promptHistoryExtension(pi: ExtensionAPI): Promise<
 		if (!config.enabled) return;
 		registerHistoryCommand(DEFAULT_COMMAND_NAME);
 		registerHistoryCommand(config.command);
-		registerSearchShortcut(config.searchShortcut);
+		registerSearchShortcut(config.searchShortcut, () => backfilledTexts);
+		// Backfill the search index from existing Pi sessions. Best-effort and
+		// asynchronous so it never blocks startup or command registration.
+		loadBackfilledPrompts(cwd, config)
+			.then((texts) => {
+				backfilledTexts = texts;
+			})
+			.catch(() => {
+				backfilledTexts = [];
+			});
 	};
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -122,7 +133,10 @@ async function handleHistoryCommand(ctx: ExtensionCommandContext): Promise<void>
 	ctx.ui.notify("Loaded prompt history entry into the editor", "info");
 }
 
-async function handleSearchShortcut(ctx: ExtensionContext): Promise<void> {
+async function handleSearchShortcut(
+	ctx: ExtensionContext,
+	getBackfilledTexts: () => string[],
+): Promise<void> {
 	if (!ctx.hasUI) return;
 
 	let config: PromptHistoryConfig;
@@ -148,6 +162,10 @@ async function handleSearchShortcut(ctx: ExtensionContext): Promise<void> {
 		ctx.ui.notify(`Failed to load prompt history: ${formatError(error)}`, "error");
 		return;
 	}
+
+	// Session history is up to date and searched first; backfilled entries from
+	// older Pi sessions fill in the rest of the index.
+	texts = mergeUnique(texts, getBackfilledTexts());
 
 	if (texts.length === 0) {
 		ctx.ui.notify("No prompt history found", "info");

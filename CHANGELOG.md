@@ -12,8 +12,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   [`pi-input-history`](https://github.com/ouzhenkun/pi-input-history). Cycling
   with `Ctrl+R`/`↑` and `Ctrl+S`/`↓`, preview scrolling with `Ctrl+K`/`Ctrl+J`,
   accept with `Enter`, cancel with `Esc`/`Ctrl+G`.
-- Unit tests for the fuzzy matcher, match highlighting, and shortcut
-  registration.
+- Search index backfill from recent Pi session files for the active working
+  directory (up to `maxEntries` prompts, newest first), so prompts submitted
+  before installation are searchable. Backfill is best-effort and asynchronous;
+  `prompt.history.jsonl` storage remains session-scoped and untouched.
+- Unit tests for the fuzzy matcher, match highlighting, backfill extraction and
+  merge, and shortcut registration.
 
 ## [0.1.1] - 2026-05-14
 

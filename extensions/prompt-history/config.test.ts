@@ -130,4 +130,35 @@ await withTempDirs(async ({ cwd, agentDir }) => {
 	assert.equal(loaded.errors[0]?.file, join(agentDir, "settings.json"));
 });
 
+await withTempDirs(async ({ cwd, agentDir }) => {
+	await mkdir(join(cwd, ".pi"), { recursive: true });
+	await writeFile(
+		join(cwd, ".pi", "settings.json"),
+		JSON.stringify({ promptHistory: { search_order: "recency", searchShortcut: "ctrl+t" } }),
+		"utf8",
+	);
+
+	const loaded = await loadPromptHistoryConfig(cwd, { agentDir });
+
+	assert.equal(loaded.config.searchOrder, "recency");
+	assert.equal(loaded.config.searchShortcut, "ctrl+t");
+});
+
+await withTempDirs(async ({ cwd, agentDir }) => {
+	await mkdir(join(cwd, ".pi"), { recursive: true });
+	await writeFile(
+		join(cwd, ".pi", "settings.json"),
+		JSON.stringify({ promptHistory: { searchOrder: "newest" } }),
+		"utf8",
+	);
+
+	const loaded = await loadPromptHistoryConfig(cwd, { agentDir });
+
+	assert.equal(
+		loaded.config.searchOrder,
+		"best",
+		"invalid search order falls back to the default",
+	);
+});
+
 console.log("prompt history config tests passed");

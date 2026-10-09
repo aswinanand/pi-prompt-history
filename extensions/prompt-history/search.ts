@@ -77,6 +77,62 @@ export function bestSubsequenceSpan(text: string, token: string): number[] {
 	return bestIdx;
 }
 
+// ─── Match Scoring ──────────────────────────────────────────────────────────────
+
+/** Score one query token against text: contiguous substring beats scattered subsequence. */
+export function scoreToken(text: string, token: string): number {
+	// Contiguous substring match.
+	const idx = text.indexOf(token);
+	if (idx !== -1) {
+		const boundary = idx === 0 || isWordBoundary(text[idx - 1]!);
+		return 100 + (boundary ? 25 : 0);
+	}
+
+	// Smallest-spread subsequence: base 25 plus up to 25 for compactness, plus a
+	// word-boundary bonus when the match starts at a token edge.
+	const best = bestSubsequenceSpan(text, token);
+	if (best.length === 0) return 0;
+	const span = best[best.length - 1]! - best[0]!;
+	const maxSpan = Math.max(1, text.length - 1);
+	const compactness = 25 * (1 - span / maxSpan);
+	const boundary = best[0] === 0 || isWordBoundary(text[best[0] - 1]!);
+	return 25 + compactness + (boundary ? 25 : 0);
+}
+
+function isWordBoundary(ch: string): boolean {
+	return /\s/.test(ch);
+}
+
+/** Average per-token score of `item` against `query` (both case-insensitive). */
+export function scoreMatch(item: string, query: string): number {
+	if (!query) return 0;
+	const lower = item.toLowerCase();
+	const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+	let total = 0;
+	for (const token of tokens) total += scoreToken(lower, token);
+	return total / tokens.length;
+}
+
+/**
+ * Rank matched history indices. `best` sorts by descending match score with
+ * recency (newest-first array order) as the stable tiebreak; `recency` keeps
+ * the input order untouched.
+ */
+export function rankMatches(
+	indices: number[],
+	history: string[],
+	query: string,
+	order: "best" | "recency",
+): number[] {
+	if (order !== "best" || !query) return indices;
+	const scored = indices.map((index) => ({
+		index,
+		score: scoreMatch(history[index]!, query),
+	}));
+	// Array#sort is stable, so equal scores keep the newest-first input order.
+	return scored.sort((a, b) => b.score - a.score).map((entry) => entry.index);
+}
+
 /** Collect character indices (in `text`) matched by each query token (smallest-spread subsequence). */
 export function collectMatchPositions(text: string, query: string): Set<number> {
 	const positions = new Set<number>();
@@ -223,6 +279,7 @@ export class ReverseSearchComponent implements Component, Focusable {
 		private readonly history: string[],
 		private readonly done: ReverseSearchDone,
 		private readonly searchShortcut: KeyId = "ctrl+r",
+		private readonly order: "best" | "recency" = "best",
 	) {
 		this.input.onEscape = () => this.done(null);
 		this.input.onSubmit = () => {
@@ -242,13 +299,13 @@ export class ReverseSearchComponent implements Component, Focusable {
 	}
 
 	private recomputeMatches(resetPointer: boolean): void {
-		const matches: number[] = [];
+		const matched: number[] = [];
 		for (let i = 0; i < this.history.length; i++) {
 			if (fuzzyMatch(this.history[i]!, this.query)) {
-				matches.push(i);
+				matched.push(i);
 			}
 		}
-		this.matchIndices = matches;
+		this.matchIndices = rankMatches(matched, this.history, this.query, this.order);
 		if (resetPointer) this.matchPointer = 0;
 		if (this.matchPointer >= this.matchIndices.length) {
 			this.matchPointer = Math.max(0, this.matchIndices.length - 1);

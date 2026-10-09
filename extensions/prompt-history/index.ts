@@ -26,13 +26,17 @@ export default async function promptHistoryExtension(pi: ExtensionAPI): Promise<
 			},
 		});
 	};
-	const registerSearchShortcut = (shortcut: string, getBackfilledTexts: () => string[]) => {
+	const registerSearchShortcut = (
+		shortcut: string,
+		getBackfilledTexts: () => string[],
+		order: "best" | "recency",
+	) => {
 		if (registeredShortcuts.has(shortcut)) return;
 		registeredShortcuts.add(shortcut);
 		pi.registerShortcut(shortcut as KeyId, {
 			description: "Reverse search prompt history",
 			handler: async (ctx) => {
-				await handleSearchShortcut(ctx, getBackfilledTexts);
+				await handleSearchShortcut(ctx, getBackfilledTexts, order);
 			},
 		});
 	};
@@ -41,7 +45,7 @@ export default async function promptHistoryExtension(pi: ExtensionAPI): Promise<
 		if (!config.enabled) return;
 		registerHistoryCommand(DEFAULT_COMMAND_NAME);
 		registerHistoryCommand(config.command);
-		registerSearchShortcut(config.searchShortcut, () => backfilledTexts);
+		registerSearchShortcut(config.searchShortcut, () => backfilledTexts, config.searchOrder);
 		// Backfill the search index from existing Pi sessions. Best-effort and
 		// asynchronous so it never blocks startup or command registration.
 		loadBackfilledPrompts(cwd, config)
@@ -136,6 +140,7 @@ async function handleHistoryCommand(ctx: ExtensionCommandContext): Promise<void>
 async function handleSearchShortcut(
 	ctx: ExtensionContext,
 	getBackfilledTexts: () => string[],
+	order: "best" | "recency",
 ): Promise<void> {
 	if (!ctx.hasUI) return;
 
@@ -175,7 +180,7 @@ async function handleSearchShortcut(
 	let overlayTui: TUI | undefined;
 	const selected = await ctx.ui.custom<string | null>((tui, theme, _keybindings, done) => {
 		overlayTui = tui;
-		return new ReverseSearchComponent(tui, theme, texts, done, config.searchShortcut as KeyId);
+		return new ReverseSearchComponent(tui, theme, texts, done, config.searchShortcut as KeyId, order);
 	}, {
 		overlay: true,
 		overlayOptions: { anchor: "bottom-center", width: "100%" },

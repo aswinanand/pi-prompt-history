@@ -16,8 +16,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   directory (up to `maxEntries` prompts, newest first), so prompts submitted
   before installation are searchable. Backfill is best-effort and asynchronous;
   `prompt.history.jsonl` storage remains session-scoped and untouched.
-- Unit tests for the fuzzy matcher, match highlighting, backfill extraction and
-  merge, and shortcut registration.
+- Match-quality ordering for the overlay via `promptHistory.searchOrder`
+  (`"best"` by default, `"recency"` to keep strict newest-first cycling).
+  Best mode ranks contiguous, word-boundary matches above scattered
+  subsequences, with recency as the stable tiebreak.
+- Unit tests for match scoring and search-order config fallback.
 
 ## [0.1.1] - 2026-05-14
 

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 export type PromptHistoryDedupe = "none" | "consecutive" | "all";
+export type PromptHistorySearchOrder = "best" | "recency";
 
 export interface PromptHistoryConfig {
 	enabled: boolean;
@@ -12,6 +13,7 @@ export interface PromptHistoryConfig {
 	ignoreInvalidLines: boolean;
 	command: string;
 	searchShortcut: string;
+	searchOrder: PromptHistorySearchOrder;
 }
 
 export interface PromptHistoryConfigError {
@@ -37,6 +39,7 @@ export const DEFAULT_PROMPT_HISTORY_CONFIG: PromptHistoryConfig = {
 	ignoreInvalidLines: true,
 	command: "history",
 	searchShortcut: "ctrl+r",
+	searchOrder: "best",
 };
 
 type JsonObject = Record<string, unknown>;
@@ -157,6 +160,9 @@ function sanitizePromptHistoryConfig(
 			typeof value.searchShortcut === "string" && value.searchShortcut.trim().length > 0
 				? normalizeShortcut(value.searchShortcut)
 				: DEFAULT_PROMPT_HISTORY_CONFIG.searchShortcut,
+		searchOrder: isPromptHistorySearchOrder(value.searchOrder)
+			? value.searchOrder
+			: DEFAULT_PROMPT_HISTORY_CONFIG.searchOrder,
 	};
 }
 
@@ -178,6 +184,10 @@ function normalizeCommandName(command: string): string {
 
 function isPromptHistoryDedupe(value: unknown): value is PromptHistoryDedupe {
 	return value === "none" || value === "consecutive" || value === "all";
+}
+
+function isPromptHistorySearchOrder(value: unknown): value is PromptHistorySearchOrder {
+	return value === "best" || value === "recency";
 }
 
 function normalizeConfigAliases(value: unknown): unknown {

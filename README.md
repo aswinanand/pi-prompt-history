@@ -94,6 +94,7 @@ Options:
 | `ignoreInvalidLines` | `true` | Ignore malformed JSONL lines instead of failing. |
 | `command` | `"history"` | Optional extra command alias registered after session start. |
 | `searchShortcut` | `"ctrl+r"` | Shortcut that opens the fuzzy reverse-search overlay. |
+| `searchOrder` | `"best"` | Match ordering in the overlay: `"best"` ranks contiguous, word-boundary matches first (recency as tiebreak); `"recency"` keeps strict newest-first order. |
 
 ### Reverse search keys
 
@@ -107,7 +108,7 @@ While the overlay is open:
 | `Enter` | Accept match into the editor |
 | `Esc` / `Ctrl+G` | Cancel |
 
-Matching is a case-insensitive subsequence match per space-separated token, and matched characters are highlighted in the preview.
+Matching is a case-insensitive subsequence match per space-separated token, and matched characters are highlighted in the preview. With the default `"best"` order, results are ranked by match quality — a contiguous, word-boundary substring match outranks a scattered subsequence — with recency breaking ties; set `"searchOrder": "recency"` to always cycle newest-first instead.
 
 For compatibility with the extracted source layout, this package also reads `editor.history` from `settings.json`; `promptHistory` wins when both are present.
 

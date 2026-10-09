@@ -5,6 +5,17 @@ import type { PromptHistoryConfig } from "./config.js";
 const MAX_SESSIONS = 25;
 
 /**
+ * Pi stores skill-expanded prompts as `<skill name="…" …>…</skill>` blocks
+ * followed by the user's message. Collapse each block back to the typed
+ * `/skill:<name>` prefix so search sees the prompt as typed.
+ */
+export function collapseSkillExpansion(text: string): string {
+	return text
+		.replace(/^\s*<skill name="([^"]+)"[^>]*>[\s\S]*?<\/skill>\n*/, "/skill:$1 ")
+		.trim();
+}
+
+/**
  * Extract user-authored text messages from session entries, in file order
  * (oldest first). Non-user entries, non-text content, and empty texts are skipped.
  */
@@ -15,7 +26,9 @@ export function extractUserTexts(entries: SessionEntry[]): string[] {
 		const message: unknown = entry.message;
 		if (!isRecord(message) || message.role !== "user") continue;
 		const text = extractText(message.content);
-		if (text) texts.push(text);
+		if (!text) continue;
+		const collapsed = collapseSkillExpansion(text);
+		if (collapsed.length > 0) texts.push(collapsed);
 	}
 	return texts;
 }
